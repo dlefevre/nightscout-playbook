@@ -1,0 +1,4 @@
+---
+# file: group_vars/all/nginx.yaml
+
+nginx_repository: http://nginx.org/packages/centos/$releasever/$basearch/

@@ -1,0 +1,52 @@
+---
+# file: tasks/nightscout.yaml
+
+# Install app
+- name: Set up installation paths
+  file: 
+    name: /opt/nightscout
+    state: directory 
+    mode: "2750" 
+    owner: "{{ nodejs_user }}"
+    group: "{{ nodejs_group }}"
+
+- block:
+    - name: Update environment installation
+      git: repo={{ nightscout_repository }} dest=/opt/nightscout/ version={{ nightscout_version }}
+      
+    - name: Install dependencies
+      npm: path=/opt/nightscout
+
+    - name: Make
+      command: make
+      args:
+        chdir: /opt/nightscout/
+      failed_when: no
+      
+  become: yes
+  become_user: "{{ nodejs_user }}"
+
+# PM2
+- name: Register PM2 systemd entry
+  template: src=pm2/pm2.service.j2 dest=/etc/systemd/system/pm2.service mode=0644
+
+- name: Register PM2 service
+  service: name=pm2 state=started enabled=yes
+
+- name: Provision nightscout environment
+  template: src=pm2/nightscout.env.j2 dest=/opt/pm2/nightscout.env owner={{ nodejs_user }} group={{ nodejs_group}} mode=0600
+
+- name: Create aliases for starting/stopping nightscout
+  blockinfile: 
+    block: |
+      alias startns='env $(cat /opt/pm2/nightscout.env) pm2 start --name nightscout /opt/nightscout/server.js'
+      alias stopns='pm2 stop nightscout'
+      alias deletens='pm2 delete nightscout'
+      alias restartns='pm2 restart nightscout'
+      alias logns='pm2 log nightscout'
+    path: "{{ item }}"
+  with_items:
+    - /home/{{ nodejs_user }}/.bash_profile
+    - /home/{{ nodejs_user }}/.bashrc
+
+

@@ -1,0 +1,6 @@
+---
+# file: group_vars/all/nightscout.yaml
+
+# Source of nightscout code
+nightscout_repository: https://github.com/nightscout/cgm-remote-monitor.git
+nightscout_version: 0.11.1

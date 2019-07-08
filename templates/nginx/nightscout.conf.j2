@@ -1,0 +1,57 @@
+# {{ ansible_managed }}
+
+server {
+    listen [::]:443 ssl ipv6only=on;
+    listen 443 ssl;
+
+    server_name {{ extcfg.domain }}; 
+    root         /usr/share/nginx/html;
+
+    # Load configuration files for the default server block.
+    include /etc/nginx/default.d/*.conf;
+
+    location / {
+        proxy_pass http://127.0.0.1:1337;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    error_page 404 /404.html;
+        location = /40x.html {
+    }
+
+    error_page 500 502 503 504 /50x.html;
+        location = /50x.html {
+    }
+
+    include /etc/nginx/snippets/ssl-strict.conf;
+    include /etc/nginx/snippets/security-features.conf;
+
+}
+
+server {        
+    listen       80 ;
+    listen       [::]:80 ;
+
+    server_name nightscout.lweb.be;
+
+    location / {
+        # First attempt to serve request as file, then
+        # as directory, then fall back to displaying a 404.
+        try_files $uri $uri/ =404;
+    }
+
+    # Entry for let's encrypt
+    location ~ /.well-known {
+           allow all;
+           root /usr/share/nginx/html;
+    }
+
+    # Redirect everythiung else to https
+    location ~ / {
+           return 301 https://$host$request_uri;
+    }
+}

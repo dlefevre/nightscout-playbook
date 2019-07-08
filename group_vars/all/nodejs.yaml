@@ -1,0 +1,18 @@
+---
+# file: group_vars/all/nodejs.yaml
+
+# Operational group for NodeJS apps
+nodejs_group: node
+nodejs_gid: 10001
+
+# Operational user for NodeJS applications/pm2
+nodejs_user: node
+nodejs_uid: 10001
+
+# NodeJS installation details
+nodejs_version: 10.16.0
+nodejs_platform: linux
+nodejs_arch: x64
+
+nodejs_filename: node-v{{ nodejs_version }}-{{ nodejs_platform }}-{{ nodejs_arch }}.tar.xz
+nodejs_url: https://nodejs.org/dist/v{{ nodejs_version }}/{{ nodejs_filename }}

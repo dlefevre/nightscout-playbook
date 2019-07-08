@@ -1,0 +1,57 @@
+---
+# file: tasks/nodejs.yaml
+
+
+- name: Create operational group for nodejs
+  group: name={{ nodejs_group }} gid={{ nodejs_gid }}
+
+- name: Create operational user for nodejs
+  user: name={{ nodejs_user }} group={{ nodejs_group }} uid={{ nodejs_uid }} comment="NodeJS Operational User" shell=/bin/bash  
+
+#
+# Install node
+#
+- name: Remove old versions of nodejs
+  file: name={{ item }} state=absent
+  with_items:
+    - /opt/nodejs
+    - /opt/node-v{{ nodejs_version }}-{{ nodejs_platform }}-{{ nodejs_arch }}
+    - /usr/bin/node
+    - /usr/bin/npm
+    - /usr/bin/npx
+
+- name: Install new nodejs archive
+  unarchive: src={{ nodejs_url }} dest=/opt remote_src=yes mode=2755
+
+- name: Rename installation
+  command: mv /opt/node-v{{ nodejs_version }}-{{ nodejs_platform }}-{{ nodejs_arch }} /opt/nodejs
+
+- name: Create symlinks nodejs
+  file: src=/opt/nodejs/bin/{{ item }} dest=/usr/bin/{{ item }} state=link 
+  with_items:
+    - node
+    - npm
+    - npx
+
+- name: Install pm2
+  npm: name=pm2 state=latest global=yes
+
+- name: Create symlinks for pm2
+  file: src=/opt/nodejs/bin/{{ item }} dest=/usr/bin/{{ item }} state=link
+  with_items:
+    - pm2
+    - pm2-dev
+    - pm2-docker
+    - pm2-runtime
+
+- name: Create pm2 home
+  file: path=/opt/pm2 owner={{ nodejs_user }} group={{ nodejs_group }} mode=0700 state=directory
+
+- name: Define pm2 home in profile of operational user
+  lineinfile:
+    regexp: 'export\s+PM2_HOME='
+    line: 'export PM2_HOME=/opt/pm2/'
+    path: '{{ item }}'
+  with_items:
+    - /home/{{ nodejs_user }}/.bash_profile
+    - /home/{{ nodejs_user }}/.bashrc

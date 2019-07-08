@@ -1,0 +1,60 @@
+---
+# file: tasks/nginx.yaml
+
+- name: Add nginx repository
+  yum_repository:
+    name: nginx-stable
+    description: nginx repository
+    baseurl: "{{ nginx_repository }}"
+    file: external_repos
+    gpgcheck: yes
+    gpgkey: https://nginx.org/keys/nginx_signing.key
+
+- name: Install nginx
+  yum: name=nginx state=present
+
+- name: Enable nginx daemon
+  service: name=nginx state=started enabled=yes
+  ignore_errors: yes
+
+- name: Allow http and https through firewall
+  firewalld: service={{ item }} permanent=yes state=enabled
+  with_items:
+    - http
+    - https
+  notify: Restart firewalld
+
+- name: Install certbot
+  yum: 
+    name: ['certbot', 'python2-certbot-nginx']
+    state: present
+
+- name: Request certificate
+  command: certbot certonly --nginx --domains {{ extcfg.domain }} -m {{ extcfg.admin_email }} -n
+  args:
+    creates: /etc/letsencrypt/live/{{ extcfg.domain }}/fullchain.pem
+
+- name: Schedule automatic certificate renewal
+  cron:
+    name: Renew certificate
+    job: 'certbot renew --post-hook "systemctl reload nginx" --quiet'
+    hour: '4,16'
+    minute: '0'
+
+- name: Install main nginx configuration
+  template: src=nginx/nginx.conf.j2 dest=/etc/nginx/nginx.conf
+  notify: Restart nginx
+
+- name: Install nightscout vhost configuration
+  template: src=nginx/nightscout.conf.j2 dest=/etc/nginx/conf.d/nightscout.conf
+  notify: Restart nginx
+
+- name: Create snippets dir
+  file: path=/etc/nginx/snippets state=directory
+
+- name: Install snippets
+  template: src=nginx/{{ item }}.conf.j2 dest=/etc/nginx/snippets/{{ item }}.conf
+  with_items:
+    - ssl-strict
+    - security-features
+  notify: Restart nginx

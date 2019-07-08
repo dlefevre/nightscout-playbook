@@ -1,0 +1,49 @@
+---
+# Use this play to create an admin account, that you can access with an
+# RSA key pair. This play will disable the root account's password and
+# prevent SSH logins for root.
+
+- hosts: all
+  tasks:
+    - name: Validate required variables
+      fail: msg="Required variable {{ item }} isn't defined"
+      when: item not in vars
+      with_items:
+        - username
+        - fullname
+        - pubkey_file
+
+    - name: Create admin account
+      user: name={{ username }} comment={{ fullname }} groups=wheel
+
+    - name: Provision public key
+      authorized_key: user={{ username }} key={{ lookup('file', pubkey_file) }}
+
+    - name: Disable default sudo rule for wheel group
+      replace:
+        path: /etc/sudoers
+        regexp: '^(\s*%wheel\s+ALL=\(ALL\)\s*ALL.*)'
+        replace: '# \1'
+        validate: visudo -cf %s
+
+    - name: Enable passwordless sudo rule for wheel group
+      replace:
+        path: /etc/sudoers
+        regexp: '^\s*#\s*%wheel\s+ALL=\(ALL\)\s+NOPASSWD:\s+ALL.*'
+        replace: '%wheel\tALL=(ALL)\tNOPASSWD: ALL'
+        validate: visudo -cf %s
+
+    - name: Disallow root login
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^\s*#?\s*PermitRootLogin'
+        line: PermitRootLogin no
+      notify: Restart sshd
+
+    - name: Disable root password
+      user: name=root password_lock=yes
+
+  handlers:
+    - name: Restart sshd
+      service: name=sshd state=restarted
+

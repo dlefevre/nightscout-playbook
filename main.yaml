@@ -1,0 +1,49 @@
+---
+# Main play
+
+- hosts: all
+  become: true
+  become_user: root
+
+  tasks:
+    - name: Validate required 'extra' vars
+      fail: msg='Variable {{ item }} is not defined'
+      when: item not in vars
+      with_items:
+        - config
+      tags: always
+
+    - name: Load external configuration
+      include_vars: file={{ config }} name=extcfg
+      tags: always
+
+    - import_tasks: tasks/system.yaml
+      tags: system
+
+    - import_tasks: tasks/mongodb.yaml
+      tags: mongodb
+
+    - import_tasks: tasks/nodejs.yaml
+      tags: nodejs
+
+    - import_tasks: tasks/nightscout.yaml
+      tags: nightscout
+
+    - import_tasks: tasks/nginx.yaml
+      tags: nginx
+
+  handlers:
+    - name: Restart sshd
+      service: name=sshd state=restarted
+
+    - name: Restart fail2ban
+      service: name=fail2ban state=restarted
+
+    - name: Restart yum-cron
+      service: name=yum-cron state=restarted
+
+    - name: Restart firewalld
+      service: name=firewalld state=restarted
+
+    - name: Restart nginx
+      service: name=nginx state=restarted

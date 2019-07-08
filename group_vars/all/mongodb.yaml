@@ -1,0 +1,5 @@
+---
+# group_vars/all/mongodb.yaml
+
+mongodb_baseline: 4.0
+mongodb_repo: https://repo.mongodb.org/yum/redhat/$releasever/mongodb-org/{{ mongodb_baseline }}/x86_64/

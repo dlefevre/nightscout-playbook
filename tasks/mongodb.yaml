@@ -1,0 +1,63 @@
+---
+# tasks/mongodb.yaml
+
+- name: Add MongoDB repository
+  yum_repository:
+    name: mongodb
+    description: MongoDB repository
+    baseurl: "{{ mongodb_repo }}"
+    file: external_repos
+    gpgcheck: yes
+    gpgkey: https://www.mongodb.org/static/pgp/server-{{ mongodb_baseline }}.asc
+
+- name: Install MongoDB
+  yum: name=mongodb-org state=present
+
+- name: Install pymongo
+  pip: name=pymongo state=present
+
+- name: Enable MongoDB daemon
+  service: name=mongod state=started enabled=yes
+
+- name: Check if authorization is enabled
+  command: 'grep "authorization: enabled" /etc/mongod.conf'
+  register: mongodb_secure
+  check_mode: no
+  ignore_errors: yes
+  changed_when: no
+  failed_when: no
+
+  # Once-off setup to secure the mongodb instance.
+- block:
+
+    - name: Create admin account
+      mongodb_user:
+        database: admin
+        name: "{{ extcfg.mongodb.admin_user }}"
+        password: "{{ extcfg.mongodb.admin_password }}"
+        roles: root
+
+    - name: Enable AccessControl for MongoDB
+      blockinfile:
+        block: |
+          security:
+            authorization: enabled
+        path: /etc/mongod.conf
+
+    # We have to do this here!
+    - name: Restart MongoDB
+      service: name=mongod state=restarted
+
+  when: mongodb_secure.rc != 0
+
+- name: Wait for MongoDB to be available
+  wait_for: port=27017
+
+- name: Create application user
+  mongodb_user:
+    database: nightscout
+    login_user: "{{ extcfg.mongodb.admin_user }}"
+    login_password: "{{ extcfg.mongodb.admin_password }}"
+    name: "{{ extcfg.mongodb.nightscout_user }}"
+    password: "{{ extcfg.mongodb.nightscout_password }}"
+    roles: readWrite

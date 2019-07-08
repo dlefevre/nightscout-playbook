@@ -1,0 +1,56 @@
+---
+# tasks/system.yaml
+
+- name: Install epel repository
+  yum: name=epel-release state=present
+
+- name: Install pip
+  yum: name=python2-pip state=present
+
+- name: Install git
+  yum: name=git state=present
+
+#
+# Set up fail2ban
+#
+- name: Install fail2ban
+  yum: name=fail2ban state=present
+
+- name: Enable fail2ban
+  service: name=fail2ban state=started enabled=yes
+
+- name: Define local jail policy
+  template: src=fail2ban/jail.local.j2 dest=/etc/fail2ban/jail.local
+  notify: Restart fail2ban
+
+#
+# Set up autoupdate
+#
+- name: Install yum-cron
+  yum: name=yum-cron state=present
+
+- name: Enabled yum-cron
+  service: name=yum-cron state=started
+
+- name: Configure yum-cron
+  template: src=yum-cron/yum-cron.conf.j2 dest=/etc/yum/yum-cron.conf
+  notify: Restart yum-cron
+
+#
+# Tune system
+#
+- name: Create specific tuned profile directory
+  file: path=/etc/tuned/no-thp state=directory
+
+- name: Create tuned profile
+  template: src=tuned.conf.j2 dest=/etc/tuned/no-thp/tuned.conf
+
+- name: Check active tuned profile
+  command: tuned-adm active
+  register: tunedadm
+  changed_when: no
+  check_mode: no
+
+- name: Register tuned profile
+  command: tuned-adm profile no-thp
+  when: '"no-thp" not in tunedadm.stdout'
