@@ -18,10 +18,9 @@
       npm: path=/opt/nightscout
 
     - name: Make
-      command: make
+      command: npm run bundle
       args:
         chdir: /opt/nightscout/
-      failed_when: no
       
   become: yes
   become_user: "{{ nodejs_user }}"

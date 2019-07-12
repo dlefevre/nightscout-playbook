@@ -55,3 +55,10 @@
   with_items:
     - /home/{{ nodejs_user }}/.bash_profile
     - /home/{{ nodejs_user }}/.bashrc
+
+- name: Install Webpack
+  npm: name=webpack global=yes
+
+- name: Install webpack-command
+  npm: name=webpack-command global=yes
+  

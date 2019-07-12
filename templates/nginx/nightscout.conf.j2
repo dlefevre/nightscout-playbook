@@ -17,14 +17,17 @@ server {
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
         proxy_cache_bypass $http_upgrade;
+        proxy_hide_header X-Powered-By;
     }
 
     error_page 404 /404.html;
-        location = /40x.html {
+    location = /40x.html {
+        #internal;
     }
 
     error_page 500 502 503 504 /50x.html;
-        location = /50x.html {
+    location = /50x.html {
+        #internal;
     }
 
     include /etc/nginx/snippets/ssl-strict.conf;
